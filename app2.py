@@ -685,4 +685,4 @@ elif dashboard == "Plot Data Dashboard":
 # Footer (Common for Both Dashboards)
 # ---------------------------
 st.markdown("---")
-st.markdown("Developed by [Your Name](https://yourwebsite.com) | © 2024 Real Estate Insights")
+st.markdown("Developed by [Kiran KT] | © 2024 Real Estate Insights")
