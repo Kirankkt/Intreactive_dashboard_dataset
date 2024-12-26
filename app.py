@@ -15,67 +15,59 @@ st.set_page_config(
 
 # Title
 st.title("Real Estate Interactive Dashboard")
-st.markdown("### Explore, Filter, and Visualize Real Estate Data")
+st.markdown("### Explore Data for Specific Locations and Gain Insights")
 
 # Sidebar Filters
-st.sidebar.header("Filters")
+st.sidebar.header("Location Selection")
 
-# Price Range Filter
-price_min, price_max = st.sidebar.slider(
-    "Select Price Range",
-    min_value=int(dataset['Plot__Price'].min()),
-    max_value=int(dataset['Plot__Price'].max()),
-    value=(int(dataset['Plot__Price'].min()), int(dataset['Plot__Price'].max()))
+# Location Dropdown Filter
+location = st.sidebar.selectbox(
+    "Select a Location",
+    options=sorted(dataset['Standardized_Location_Name'].unique()),
+    index=0
 )
 
-# Location Filter with Multiselect
-locations = st.sidebar.multiselect(
-    "Select Locations",
-    options=dataset['Standardized_Location_Name'].unique(),
-    default=dataset['Standardized_Location_Name'].unique()
+# Filter Data by Selected Location
+filtered_data = dataset[dataset['Standardized_Location_Name'] == location]
+
+# Major Insights for All Locations
+st.header("Overview of Major Locations")
+location_summary = dataset.groupby('Standardized_Location_Name').agg(
+    Average_Price=('Plot__Price', 'mean'),
+    Average_Price_per_Cent=('Price_per_cent', 'mean'),
+    Total_Listings=('Plot__Price', 'count')
+).reset_index()
+
+summary_chart = px.bar(
+    location_summary,
+    x='Standardized_Location_Name',
+    y='Average_Price',
+    hover_data=['Average_Price_per_Cent', 'Total_Listings'],
+    labels={"Average_Price": "Average Price"},
+    title="Average Price by Location",
+    color='Average_Price',
+    color_continuous_scale='Blues'
 )
+st.plotly_chart(summary_chart, use_container_width=True)
 
-# Plot Area Filter
-area_min, area_max = st.sidebar.slider(
-    "Select Plot Area Range (sqft)",
-    min_value=int(dataset['Plot__Area'].min()),
-    max_value=int(dataset['Plot__Area'].max()),
-    value=(int(dataset['Plot__Area'].min()), int(dataset['Plot__Area'].max()))
-)
+# Display Filtered Data
+st.header(f"Data for {location}")
 
-# Apply Filters
-filtered_data = dataset[
-    (dataset['Plot__Price'] >= price_min) &
-    (dataset['Plot__Price'] <= price_max) &
-    (dataset['Standardized_Location_Name'].isin(locations)) &
-    (dataset['Plot__Area'] >= area_min) &
-    (dataset['Plot__Area'] <= area_max)
-]
+if not filtered_data.empty:
+    st.write(f"Displaying data for {location} ({len(filtered_data)} listings)")
+    st.dataframe(filtered_data[['Plot__Price', 'Plot__Area', 'Price_per_sqft', 'Plot__Area_Cents', 'Plot__DESC']])
 
-# Main Dashboard
-st.header("Filtered Listings")
-st.write(f"Displaying {len(filtered_data)} of {len(dataset)} listings")
-
-# Data Table
-st.dataframe(filtered_data[['Standardized_Location_Name', 'Plot__Price', 'Plot__Area', 'Price_per_sqft']])
-
-# Visualizations
-st.header("Key Insights")
-
-# Price Distribution by Location
-if len(filtered_data) > 0:
-    st.subheader("Average Price by Location")
-    price_by_location = filtered_data.groupby('Standardized_Location_Name')['Plot__Price'].mean().reset_index()
-    price_chart = px.bar(
-        price_by_location,
-        x='Standardized_Location_Name',
-        y='Plot__Price',
-        labels={"Plot__Price": "Average Price"},
-        title="Average Plot Price by Location",
-        color='Plot__Price',
-        color_continuous_scale='Blues'
+    # Price Distribution
+    st.subheader("Price Distribution")
+    price_histogram = px.histogram(
+        filtered_data,
+        x='Plot__Price',
+        nbins=10,
+        title="Price Distribution in Selected Location",
+        labels={"Plot__Price": "Price"},
+        color_discrete_sequence=['blue']
     )
-    st.plotly_chart(price_chart, use_container_width=True)
+    st.plotly_chart(price_histogram, use_container_width=True)
 
     # Scatter Plot: Plot Area vs. Price
     st.subheader("Plot Area vs. Price")
@@ -85,29 +77,36 @@ if len(filtered_data) > 0:
         y='Plot__Price',
         labels={"Plot__Area": "Plot Area (sqft)", "Plot__Price": "Price"},
         title="Plot Area vs. Price",
-        hover_data=['Standardized_Location_Name', 'Price_per_sqft']
+        hover_data=['Price_per_sqft']
     )
     st.plotly_chart(scatter_chart, use_container_width=True)
 
-    # Interactive Map (Optional if Lat/Lon data is available)
-    if 'Latitude' in dataset.columns and 'Longitude' in dataset.columns:
-        st.subheader("Interactive Map of Listings")
-        map_chart = px.scatter_mapbox(
+    # Build-to-Plot Ratio Analysis
+    if 'Build_to_Plot_Ratio' in filtered_data.columns:
+        st.subheader("Build-to-Plot Ratio Analysis")
+        ratio_chart = px.box(
             filtered_data,
-            lat="Latitude",
-            lon="Longitude",
-            hover_name="Standardized_Location_Name",
-            hover_data=["Plot__Price", "Plot__Area"],
-            color="Plot__Price",
-            size="Plot__Area",
-            color_continuous_scale=px.colors.cyclical.IceFire,
-            title="Map of Listings"
+            y='Build_to_Plot_Ratio',
+            title="Distribution of Build-to-Plot Ratio",
+            labels={"Build_to_Plot_Ratio": "Ratio"}
         )
-        map_chart.update_layout(mapbox_style="open-street-map")
-        st.plotly_chart(map_chart, use_container_width=True)
+        st.plotly_chart(ratio_chart, use_container_width=True)
 
 else:
-    st.warning("No data matches your selected filters. Please adjust the filters.")
+    st.warning(f"No data available for {location}. Please select another location.")
+
+# Key Comparisons
+st.header("Comparisons Across Major Locations")
+comparison_chart = px.bar(
+    location_summary,
+    x='Standardized_Location_Name',
+    y=['Average_Price', 'Average_Price_per_Cent'],
+    barmode='group',
+    labels={"value": "Amount", "variable": "Metric"},
+    title="Comparison of Average Prices and Price per Cent",
+    color_discrete_sequence=px.colors.qualitative.Set2
+)
+st.plotly_chart(comparison_chart, use_container_width=True)
 
 # Summary Section
 st.sidebar.subheader("Summary")
