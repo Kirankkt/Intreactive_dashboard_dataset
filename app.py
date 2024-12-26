@@ -3,15 +3,29 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Load the dataset
-file_path = 'Updated_Cleaned_Dataset (1).csv'  # Replace with the path to your dataset
+# ---------------------------
+# Streamlit Page Configuration
+# ---------------------------
+st.set_page_config(
+    page_title="Enhanced Real Estate Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    page_icon="🏠"
+)
+
+# ---------------------------
+# Load the Dataset
+# ---------------------------
 @st.cache_data
 def load_data(path):
     return pd.read_csv(path)
 
+file_path = 'Updated_Cleaned_Dataset (1).csv'  # Replace with the path to your dataset
 dataset = load_data(file_path)
 
-# Preprocessing: Check for required columns
+# ---------------------------
+# Preprocessing: Check for Required Columns
+# ---------------------------
 required_columns = [
     'Plot__url', 'Plot__Price', 'Plot__Beds', 'Build__Area', 'Plot__Area',
     'Plot__DESC', 'Plot__Area_Cents', 'Price_per_sqft', 'Price_per_cent',
@@ -23,15 +37,9 @@ if missing_columns:
     st.error(f"Missing required columns: {', '.join(missing_columns)}")
     st.stop()
 
-# Streamlit Page Configuration
-st.set_page_config(
-    page_title="Enhanced Real Estate Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    page_icon="🏠"
-)
-
+# ---------------------------
 # Title and Description
+# ---------------------------
 st.title("🏠 Enhanced Real Estate Interactive Dashboard")
 st.markdown("""
 ### Explore Comprehensive Data for Specific Locations and Gain Deeper Insights
@@ -41,7 +49,9 @@ st.markdown("""
 - **Analyze** distributions and relationships effectively.
 """)
 
+# ---------------------------
 # Sidebar Filters
+# ---------------------------
 st.sidebar.header("🔍 Filters")
 
 # Multi-select Location Filter
@@ -52,7 +62,7 @@ selected_locations = st.sidebar.multiselect(
     default=[locations[0]]
 )
 
-# Multi-select Beds Filter
+# Multi-select Bedrooms Filter
 beds_options = sorted(dataset['Plot__Beds'].unique())
 selected_beds = st.sidebar.multiselect(
     "Select Number of Bedrooms",
@@ -104,7 +114,9 @@ selected_ratio = st.sidebar.slider(
     step=0.1
 )
 
+# ---------------------------
 # Apply Filters
+# ---------------------------
 filtered_data = dataset[
     (dataset['Standardized_Location_Name'].isin(selected_locations)) &
     (dataset['Plot__Beds'].isin(selected_beds)) &
@@ -118,12 +130,16 @@ filtered_data = dataset[
     (dataset['Build_to_Plot_Ratio'] <= selected_ratio[1])
 ]
 
+# ---------------------------
 # Sidebar Summary
+# ---------------------------
 st.sidebar.subheader("📊 Summary")
 st.sidebar.write(f"**Total Listings:** {len(dataset)}")
 st.sidebar.write(f"**Filtered Listings:** {len(filtered_data)}")
 
-# KPIs
+# ---------------------------
+# Key Performance Indicators (KPIs)
+# ---------------------------
 st.header("🚀 Key Performance Indicators")
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 kpi1.metric("Total Listings", len(filtered_data))
@@ -131,7 +147,9 @@ kpi2.metric("Average Price", f"${filtered_data['Plot__Price'].mean():,.2f}")
 kpi3.metric("Median Plot Area", f"{filtered_data['Plot__Area'].median():,.0f} sqft")
 kpi4.metric("Average Price per Sqft", f"${filtered_data['Price_per_sqft'].mean():,.2f}")
 
+# ---------------------------
 # Overview of Major Locations
+# ---------------------------
 st.header("📊 Overview of Major Locations")
 location_summary = filtered_data.groupby('Standardized_Location_Name').agg(
     Average_Price=('Plot__Price', 'mean'),
@@ -153,7 +171,9 @@ summary_chart = px.bar(
 )
 st.plotly_chart(summary_chart, use_container_width=True)
 
+# ---------------------------
 # Detailed Analytics
+# ---------------------------
 st.header("📈 Detailed Analytics")
 
 # 1. Price Distribution by Location
@@ -197,7 +217,9 @@ fig_ratio = px.histogram(
 )
 st.plotly_chart(fig_ratio, use_container_width=True)
 
+# ---------------------------
 # Comparative Analysis
+# ---------------------------
 st.header("🔄 Comparative Analysis Across Locations")
 comparison_metrics = ['Average_Price', 'Average_Price_per_Cent', 'Total_Listings']
 fig_comparison = go.Figure()
@@ -231,19 +253,26 @@ fig_comparison.update_layout(
 )
 st.plotly_chart(fig_comparison, use_container_width=True)
 
+# ---------------------------
 # Listings Data Table
+# ---------------------------
 st.header("📋 Listings Data Table")
 st.subheader("Filter and Sort Listings")
-st.dataframe(
-    filtered_data[[
-        'Standardized_Location_Name', 'Plot__Price', 'Plot__Beds', 'Build__Area',
-        'Plot__Area', 'Price_per_sqft', 'Price_per_cent', 'Build_to_Plot_Ratio',
-        'Total_Area', 'Plot__DESC', 'Plot__url'
-    ]].sort_values(by='Plot__Price', ascending=False).reset_index(drop=True),
-    height=600
+# Convert Plot__url to clickable links
+def make_clickable(url):
+    return f'<a href="{url}" target="_blank">View Listing</a>'
+
+filtered_data_display = filtered_data.copy()
+filtered_data_display['Plot__url'] = filtered_data_display['Plot__url'].apply(make_clickable)
+
+st.markdown(
+    filtered_data_display.to_html(escape=False, index=False),
+    unsafe_allow_html=True
 )
 
+# ---------------------------
 # Export Option
+# ---------------------------
 st.header("💾 Export Data")
 st.markdown("Download the filtered data for further analysis.")
 def convert_df(df):
@@ -258,6 +287,8 @@ st.download_button(
     mime='text/csv',
 )
 
+# ---------------------------
 # Footer
+# ---------------------------
 st.markdown("---")
 st.markdown("Developed by [Your Name](https://yourwebsite.com) | © 2024 Real Estate Insights")
