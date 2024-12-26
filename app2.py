@@ -79,21 +79,30 @@ if dashboard == "Property Data Dashboard":
     # ---------------------------
     st.sidebar.header("🔍 Property Filters")
     
-    # Multi-select Location Filter
+    # Multi-select Location Filter with Improved UX
     prop_locations = sorted(property_data['Standardized_Location_Name'].unique())
     selected_prop_locations = st.sidebar.multiselect(
         "Select Location(s)",
         options=prop_locations,
-        default=prop_locations  # Select all by default
+        default=None  # No default selection
     )
+    
+    # Handle 'Select All' functionality
+    if not selected_prop_locations:
+        filtered_prop_data = property_data.copy()
+    else:
+        filtered_prop_data = property_data[property_data['Standardized_Location_Name'].isin(selected_prop_locations)]
     
     # Multi-select Bedrooms Filter
     prop_beds_options = sorted(property_data['Plot__Beds'].unique())
     selected_prop_beds = st.sidebar.multiselect(
         "Select Number of Bedrooms",
         options=prop_beds_options,
-        default=prop_beds_options
+        default=prop_beds_options  # Select all by default
     )
+    
+    if selected_prop_beds:
+        filtered_prop_data = filtered_prop_data[filtered_prop_data['Plot__Beds'].isin(selected_prop_beds)]
     
     # Price Range Slider
     prop_min_price = int(property_data['Plot__Price'].min())
@@ -106,6 +115,11 @@ if dashboard == "Property Data Dashboard":
         step=10000
     )
     
+    filtered_prop_data = filtered_prop_data[
+        (filtered_prop_data['Plot__Price'] >= selected_prop_price[0]) &
+        (filtered_prop_data['Plot__Price'] <= selected_prop_price[1])
+    ]
+    
     # Plot Area Range Slider
     prop_min_plot_area = float(property_data['Plot__Area'].min())
     prop_max_plot_area = float(property_data['Plot__Area'].max())
@@ -116,6 +130,11 @@ if dashboard == "Property Data Dashboard":
         value=(prop_min_plot_area, prop_max_plot_area),
         step=1.0
     )
+    
+    filtered_prop_data = filtered_prop_data[
+        (filtered_prop_data['Plot__Area'] >= selected_prop_plot_area[0]) &
+        (filtered_prop_data['Plot__Area'] <= selected_prop_plot_area[1])
+    ]
     
     # Build Area Range Slider
     prop_min_build_area = float(property_data['Build__Area'].min())
@@ -128,6 +147,11 @@ if dashboard == "Property Data Dashboard":
         step=1.0
     )
     
+    filtered_prop_data = filtered_prop_data[
+        (filtered_prop_data['Build__Area'] >= selected_prop_build_area[0]) &
+        (filtered_prop_data['Build__Area'] <= selected_prop_build_area[1])
+    ]
+    
     # Build-to-Plot Ratio Slider
     prop_min_ratio = float(property_data['Build_to_Plot_Ratio'].min())
     prop_max_ratio = float(property_data['Build_to_Plot_Ratio'].max())
@@ -139,20 +163,9 @@ if dashboard == "Property Data Dashboard":
         step=0.1
     )
     
-    # ---------------------------
-    # Apply Filters to Property Data
-    # ---------------------------
-    filtered_prop_data = property_data[
-        (property_data['Standardized_Location_Name'].isin(selected_prop_locations)) &
-        (property_data['Plot__Beds'].isin(selected_prop_beds)) &
-        (property_data['Plot__Price'] >= selected_prop_price[0]) &
-        (property_data['Plot__Price'] <= selected_prop_price[1]) &
-        (property_data['Plot__Area'] >= selected_prop_plot_area[0]) &
-        (property_data['Plot__Area'] <= selected_prop_plot_area[1]) &
-        (property_data['Build__Area'] >= selected_prop_build_area[0]) &
-        (property_data['Build__Area'] <= selected_prop_build_area[1]) &
-        (property_data['Build_to_Plot_Ratio'] >= selected_prop_ratio[0]) &
-        (property_data['Build_to_Plot_Ratio'] <= selected_prop_ratio[1])
+    filtered_prop_data = filtered_prop_data[
+        (filtered_prop_data['Build_to_Plot_Ratio'] >= selected_prop_ratio[0]) &
+        (filtered_prop_data['Build_to_Plot_Ratio'] <= selected_prop_ratio[1])
     ]
     
     # ---------------------------
@@ -248,28 +261,35 @@ if dashboard == "Property Data Dashboard":
     # ---------------------------
     # Comparative Analysis for Property Dashboard
     # ---------------------------
-    st.header("🔄 Comparative Analysis Across Locations")
-    prop_comparison_metrics = ['Average_Price', 'Average_Price_per_Cent', 'Total_Listings']
+    st.header("🔄 Comparative Analysis")
+    
+    # Determine Top and Bottom Regions based on Average Price
+    top_regions = prop_location_summary.sort_values(by='Average_Price', ascending=False).head(5)
+    bottom_regions = prop_location_summary.sort_values(by='Average_Price', ascending=True).head(5)
+    
+    # Selected Regions
+    selected_regions = selected_prop_locations if selected_prop_locations else prop_locations
+    
+    # Extract data for selected, top, and bottom regions
+    selected_data = prop_location_summary[prop_location_summary['Standardized_Location_Name'].isin(selected_regions)]
+    comparison_data = pd.concat([selected_data, top_regions, bottom_regions]).drop_duplicates()
+    
+    # Remove duplicates if any selected region is also in top or bottom
+    comparison_data = comparison_data.reset_index(drop=True)
+    
+    # Create Grouped Bar Chart
     prop_fig_comparison = go.Figure()
     
-    prop_fig_comparison.add_trace(go.Bar(
-        x=prop_location_summary['Standardized_Location_Name'],
-        y=prop_location_summary['Average_Price'],
-        name='Average Price',
-        marker_color='indianred'
-    ))
-    prop_fig_comparison.add_trace(go.Bar(
-        x=prop_location_summary['Standardized_Location_Name'],
-        y=prop_location_summary['Average_Price_per_Cent'],
-        name='Avg Price per Cent',
-        marker_color='lightsalmon'
-    ))
-    prop_fig_comparison.add_trace(go.Bar(
-        x=prop_location_summary['Standardized_Location_Name'],
-        y=prop_location_summary['Total_Listings'],
-        name='Total Listings',
-        marker_color='darkseagreen'
-    ))
+    metrics = ['Average_Price', 'Average_Price_per_Cent', 'Total_Listings']
+    colors = ['indianred', 'lightsalmon', 'darkseagreen']
+    
+    for metric, color in zip(metrics, colors):
+        prop_fig_comparison.add_trace(go.Bar(
+            x=comparison_data['Standardized_Location_Name'],
+            y=comparison_data[metric],
+            name=metric.replace('_', ' '),
+            marker_color=color
+        ))
     
     prop_fig_comparison.update_layout(
         barmode='group',
@@ -277,7 +297,8 @@ if dashboard == "Property Data Dashboard":
         xaxis_title="Location",
         yaxis_title="Value",
         legend_title="Metrics",
-        template="plotly_white"
+        template="plotly_white",
+        height=600
     )
     st.plotly_chart(prop_fig_comparison, use_container_width=True)
     
@@ -355,21 +376,30 @@ elif dashboard == "Plot Data Dashboard":
     # ---------------------------
     st.sidebar.header("🔍 Plot Filters")
     
-    # Multi-select Location Filter
+    # Multi-select Location Filter with Improved UX
     plot_locations = sorted(plot_data['Location'].unique())
     selected_plot_locations = st.sidebar.multiselect(
         "Select Location(s)",
         options=plot_locations,
-        default=plot_locations  # Select all by default
+        default=None  # No default selection
     )
+    
+    # Handle 'Select All' functionality
+    if not selected_plot_locations:
+        filtered_plot_data = plot_data.copy()
+    else:
+        filtered_plot_data = plot_data[plot_data['Location'].isin(selected_plot_locations)]
     
     # Multi-select Density Filter
     plot_density_options = sorted(plot_data['density'].unique())
     selected_plot_density = st.sidebar.multiselect(
         "Select Density",
         options=plot_density_options,
-        default=plot_density_options
+        default=plot_density_options  # Select all by default
     )
+    
+    if selected_plot_density:
+        filtered_plot_data = filtered_plot_data[filtered_plot_data['density'].isin(selected_plot_density)]
     
     # Price Range Slider
     plot_min_price = int(plot_data['Price'].min())
@@ -382,6 +412,11 @@ elif dashboard == "Plot Data Dashboard":
         step=10000
     )
     
+    filtered_plot_data = filtered_plot_data[
+        (filtered_plot_data['Price'] >= selected_plot_price[0]) &
+        (filtered_plot_data['Price'] <= selected_plot_price[1])
+    ]
+    
     # Area Range Slider
     plot_min_area = float(plot_data['Area'].min())
     plot_max_area = float(plot_data['Area'].max())
@@ -392,6 +427,11 @@ elif dashboard == "Plot Data Dashboard":
         value=(plot_min_area, plot_max_area),
         step=1.0
     )
+    
+    filtered_plot_data = filtered_plot_data[
+        (filtered_plot_data['Area'] >= selected_plot_area[0]) &
+        (filtered_plot_data['Area'] <= selected_plot_area[1])
+    ]
     
     # Price per Cent Range Slider
     plot_min_price_cent = float(plot_data['Price per cent'].min())
@@ -404,6 +444,11 @@ elif dashboard == "Plot Data Dashboard":
         step=1000.0
     )
     
+    filtered_plot_data = filtered_plot_data[
+        (filtered_plot_data['Price per cent'] >= selected_plot_price_cent[0]) &
+        (filtered_plot_data['Price per cent'] <= selected_plot_price_cent[1])
+    ]
+    
     # Price to Price per Cent Ratio Slider
     plot_min_ratio = float(plot_data['price_to_price_per_cent_ratio'].min())
     plot_max_ratio = float(plot_data['price_to_price_per_cent_ratio'].max())
@@ -414,6 +459,11 @@ elif dashboard == "Plot Data Dashboard":
         value=(0.0, round(plot_max_ratio, 2)),
         step=0.1
     )
+    
+    filtered_plot_data = filtered_plot_data[
+        (filtered_plot_data['price_to_price_per_cent_ratio'] >= selected_plot_ratio[0]) &
+        (filtered_plot_data['price_to_price_per_cent_ratio'] <= selected_plot_ratio[1])
+    ]
     
     # Distance Sliders
     plot_distance_columns = [
@@ -436,25 +486,10 @@ elif dashboard == "Plot Data Dashboard":
             step=1.0
         )
     
-    # ---------------------------
-    # Apply Filters to Plot Data
-    # ---------------------------
-    filtered_plot_data = plot_data[
-        (plot_data['Location'].isin(selected_plot_locations)) &
-        (plot_data['density'].isin(selected_plot_density)) &
-        (plot_data['Price'] >= selected_plot_price[0]) &
-        (plot_data['Price'] <= selected_plot_price[1]) &
-        (plot_data['Area'] >= selected_plot_area[0]) &
-        (plot_data['Area'] <= selected_plot_area[1]) &
-        (plot_data['Price per cent'] >= selected_plot_price_cent[0]) &
-        (plot_data['Price per cent'] <= selected_plot_price_cent[1]) &
-        (plot_data['price_to_price_per_cent_ratio'] >= selected_plot_ratio[0]) &
-        (plot_data['price_to_price_per_cent_ratio'] <= selected_plot_ratio[1])
-    ]
-    
     for col, (min_val, max_val) in plot_distance_filters.items():
         filtered_plot_data = filtered_plot_data[
-            (filtered_plot_data[col] >= min_val) & (filtered_plot_data[col] <= max_val)
+            (filtered_plot_data[col] >= min_val) &
+            (filtered_plot_data[col] <= max_val)
         ]
     
     # ---------------------------
@@ -557,8 +592,9 @@ elif dashboard == "Plot Data Dashboard":
     # ---------------------------
     # Comparative Analysis for Plot Dashboard
     # ---------------------------
-    st.header("🔄 Comparative Analysis Across Locations")
-    plot_comparison_metrics = ['Price', 'Price per cent', 'Area']
+    st.header("🔄 Comparative Analysis")
+    
+    # Determine Top and Bottom Locations based on Average Price
     plot_location_summary = filtered_plot_data.groupby('Location').agg(
         Average_Price=('Price', 'mean'),
         Average_Price_per_Cent=('Price per cent', 'mean'),
@@ -567,26 +603,32 @@ elif dashboard == "Plot Data Dashboard":
         Median_Area=('Area', 'median')
     ).reset_index()
     
+    top_plot_regions = plot_location_summary.sort_values(by='Average_Price', ascending=False).head(5)
+    bottom_plot_regions = plot_location_summary.sort_values(by='Average_Price', ascending=True).head(5)
+    
+    # Selected Regions
+    selected_plot_regions = selected_plot_locations if selected_plot_locations else plot_locations
+    
+    # Extract data for selected, top, and bottom regions
+    selected_plot_data = plot_location_summary[plot_location_summary['Location'].isin(selected_plot_regions)]
+    comparison_plot_data = pd.concat([selected_plot_data, top_plot_regions, bottom_plot_regions]).drop_duplicates()
+    
+    # Remove duplicates if any selected region is also in top or bottom
+    comparison_plot_data = comparison_plot_data.reset_index(drop=True)
+    
+    # Create Grouped Bar Chart
     plot_fig_comparison = go.Figure()
     
-    plot_fig_comparison.add_trace(go.Bar(
-        x=plot_location_summary['Location'],
-        y=plot_location_summary['Average_Price'],
-        name='Average Price',
-        marker_color='indianred'
-    ))
-    plot_fig_comparison.add_trace(go.Bar(
-        x=plot_location_summary['Location'],
-        y=plot_location_summary['Average_Price_per_Cent'],
-        name='Avg Price per Cent',
-        marker_color='lightsalmon'
-    ))
-    plot_fig_comparison.add_trace(go.Bar(
-        x=plot_location_summary['Location'],
-        y=plot_location_summary['Total_Plots'],
-        name='Total Plots',
-        marker_color='darkseagreen'
-    ))
+    metrics = ['Average_Price', 'Average_Price_per_Cent', 'Total_Plots']
+    colors = ['indianred', 'lightsalmon', 'darkseagreen']
+    
+    for metric, color in zip(metrics, colors):
+        plot_fig_comparison.add_trace(go.Bar(
+            x=comparison_plot_data['Location'],
+            y=comparison_plot_data[metric],
+            name=metric.replace('_', ' '),
+            marker_color=color
+        ))
     
     plot_fig_comparison.update_layout(
         barmode='group',
@@ -594,7 +636,8 @@ elif dashboard == "Plot Data Dashboard":
         xaxis_title="Location",
         yaxis_title="Value",
         legend_title="Metrics",
-        template="plotly_white"
+        template="plotly_white",
+        height=600
     )
     st.plotly_chart(plot_fig_comparison, use_container_width=True)
     
