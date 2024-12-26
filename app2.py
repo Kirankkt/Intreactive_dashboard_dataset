@@ -57,7 +57,7 @@ if dashboard == "Property Data Dashboard":
     # ---------------------------
     # Load Property Dataset
     # ---------------------------
-    property_file_path = 'Property_Dataset.csv'  # Replace with your actual Property Data CSV file name
+    property_file_path = 'Updated_Cleaned_Dataset (1).csv'  # Replace with your actual Property Data CSV file name
     property_data = load_property_data(property_file_path)
     
     # ---------------------------
@@ -331,7 +331,7 @@ elif dashboard == "Plot Data Dashboard":
     # ---------------------------
     # Load Plot Dataset
     # ---------------------------
-    plot_file_path = 'Plot_Dataset.csv'  # Replace with your actual Plot Data CSV file name
+    plot_file_path = 'standardized_locations_dataset.csv'  # Replace with your actual Plot Data CSV file name
     plot_data = load_plot_data(plot_file_path)
     
     # ---------------------------
