@@ -4,7 +4,6 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.cluster import KMeans
 
 # ---------------------------
 # Streamlit Page Configuration
@@ -48,16 +47,6 @@ def load_plot_data(path):
 
 def make_clickable(url):
     return f'<a href="{url}" target="_blank">View Listing</a>'
-
-def perform_clustering(df, n_clusters=5):
-    """
-    Perform K-Means clustering on the dataframe based on Latitude, Longitude, and Price.
-    Returns the dataframe with an additional 'Cluster' column.
-    """
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    clustering_features = df[['Latitude', 'Longitude', 'Price']]
-    df['Cluster'] = kmeans.fit_predict(clustering_features)
-    return df
 
 # ---------------------------
 # Property Data Dashboard
@@ -250,7 +239,7 @@ if dashboard == "Property Data Dashboard":
             x='Plot__Area_Cents',
             y='Plot__Price',
             trendline='ols',
-            hover_data=['Price_per_cent', 'Standardized_Location_Name'],
+            hover_data=['Price_per_sqft', 'Standardized_Location_Name'],
             title="Relationship Between Plot Area (Cents) and Price",
             labels={"Plot__Area_Cents": "Plot Area (Cents)", "Plot__Price": "Price (₹)"},
             color='Standardized_Location_Name',
@@ -531,15 +520,24 @@ elif dashboard == "Plot Data Dashboard":
     plot_kpi5.metric("Average Build Area (sqft)", f"{filtered_plot_data['price_to_price_per_cent_ratio'].mean():,.2f} sqft")
     
     # ---------------------------
-    # Interactive Map for Plot Dashboard with Clusters
+    # Interactive Map for Plot Dashboard with Price-Based Color Coding
     # ---------------------------
     st.header("🗺️ Plots Geographical Distribution")
     if not filtered_plot_data.empty:
-        # Perform clustering
-        clustered_data = perform_clustering(filtered_plot_data, n_clusters=5)
+        # Define price per cent bins for color coding
+        price_bins = [filtered_plot_data['Price per cent'].min(),
+                      filtered_plot_data['Price per cent'].quantile(0.25),
+                      filtered_plot_data['Price per cent'].median(),
+                      filtered_plot_data['Price per cent'].quantile(0.75),
+                      filtered_plot_data['Price per cent'].max()]
+        price_labels = [f"₹{int(price_bins[i])} - ₹{int(price_bins[i+1])}" for i in range(len(price_bins)-1)]
+        filtered_plot_data['Price_Category'] = pd.cut(filtered_plot_data['Price per cent'], bins=price_bins, labels=price_labels, include_lowest=True)
+        
+        # Create color map
+        color_map = {label: color for label, color in zip(price_labels, px.colors.qualitative.Safe)}
         
         fig_plot_map = px.scatter_mapbox(
-            clustered_data,
+            filtered_plot_data,
             lat="Latitude",
             lon="Longitude",
             hover_name="Location",
@@ -547,21 +545,26 @@ elif dashboard == "Plot Data Dashboard":
                 "Price": True,
                 "Area": True,
                 "Price per cent": True,
-                "distance_to_technopark": True,
-                "distance_to_nearest_beach": True,
-                "Cluster": True
+                "density": True,
+                "price_to_price_per_cent_ratio": True
             },
-            color="Cluster",
-            size="Price",
-            color_discrete_sequence=px.colors.qualitative.Safe,
+            color="Price_Category",
+            color_discrete_map=color_map,
+            size="Price_per_cent",
             size_max=15,
             zoom=10,
             height=600,
-            title="Geographical Distribution of Plots with Clusters"
+            title="Geographical Distribution of Plots with Price Categories"
         )
-        fig_plot_map.update_layout(mapbox_style="open-street-map")
-        fig_plot_map.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
+        fig_plot_map.update_layout(
+            mapbox_style="open-street-map",
+            margin={"r":0,"t":50,"l":0,"b":0},
+            legend_title_text='Price per Cent (₹)'
+        )
+        
+        # Add captions and explanations
         st.plotly_chart(fig_plot_map, use_container_width=True)
+        st.caption("**Note:** Each plot is color-coded based on its Price per Cent. The size of the marker represents the Price per Cent value.")
     else:
         st.warning("No data available for the selected filters.")
     
