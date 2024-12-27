@@ -524,48 +524,69 @@ elif dashboard == "Plot Data Dashboard":
     # ---------------------------
     st.header("🗺️ Plots Geographical Distribution")
     if not filtered_plot_data.empty:
-        # Define price per cent bins for color coding
-        price_bins = [filtered_plot_data['Price per cent'].min(),
-                      filtered_plot_data['Price per cent'].quantile(0.25),
-                      filtered_plot_data['Price per cent'].median(),
-                      filtered_plot_data['Price per cent'].quantile(0.75),
-                      filtered_plot_data['Price per cent'].max()]
-        price_labels = [f"₹{int(price_bins[i])} - ₹{int(price_bins[i+1])}" for i in range(len(price_bins)-1)]
-        filtered_plot_data['Price_Category'] = pd.cut(filtered_plot_data['Price per cent'], bins=price_bins, labels=price_labels, include_lowest=True)
-        
-        # Create color map
-        color_map = {label: color for label, color in zip(price_labels, px.colors.qualitative.Safe)}
-        
-        fig_plot_map = px.scatter_mapbox(
-            filtered_plot_data,
-            lat="Latitude",
-            lon="Longitude",
-            hover_name="Location",
-            hover_data={
-                "Price": True,
-                "Area": True,
-                "Price per cent": True,
-                "density": True,
-                "price_to_price_per_cent_ratio": True
-            },
-            color="Price_Category",
-            color_discrete_map=color_map,
-            size="Price per cent",
-            size_max=15,
-            zoom=10,
-            height=600,
-            title="Geographical Distribution of Plots with Price Categories",
-            labels={"Price_Category": "Price per Cent (₹)"}
-        )
-        fig_plot_map.update_layout(
-            mapbox_style="open-street-map",
-            margin={"r":0,"t":50,"l":0,"b":0},
-            legend_title_text='Price per Cent (₹)'
-        )
-        
-        # Add captions and explanations
-        st.plotly_chart(fig_plot_map, use_container_width=True)
-        st.caption("**Note:** Each plot is color-coded based on its Price per Cent. The size of the marker represents the Price per Cent value.")
+        try:
+            # Define price per cent bins for color coding using quantiles
+            price_bins = [
+                filtered_plot_data['Price per cent'].min(),
+                filtered_plot_data['Price per cent'].quantile(0.25),
+                filtered_plot_data['Price per cent'].median(),
+                filtered_plot_data['Price per cent'].quantile(0.75),
+                filtered_plot_data['Price per cent'].max()
+            ]
+            # Drop duplicate bin edges
+            unique_bins = sorted(set(price_bins))
+            if len(unique_bins) < len(price_bins):
+                # Adjust the number of bins and labels accordingly
+                price_bins = unique_bins
+                num_bins = len(price_bins) - 1
+                price_labels = [f"₹{int(price_bins[i])} - ₹{int(price_bins[i+1])}" for i in range(num_bins)]
+            else:
+                price_labels = [f"₹{int(price_bins[i])} - ₹{int(price_bins[i+1])}" for i in range(len(price_bins)-1)]
+            
+            # Assign Price_Category
+            filtered_plot_data['Price_Category'] = pd.cut(
+                filtered_plot_data['Price per cent'],
+                bins=price_bins,
+                labels=price_labels,
+                include_lowest=True,
+                duplicates='drop'
+            )
+            
+            # Create color map
+            color_map = {label: color for label, color in zip(price_labels, px.colors.qualitative.Safe)}
+            
+            fig_plot_map = px.scatter_mapbox(
+                filtered_plot_data,
+                lat="Latitude",
+                lon="Longitude",
+                hover_name="Location",
+                hover_data={
+                    "Price": True,
+                    "Area": True,
+                    "Price per cent": True,
+                    "density": True,
+                    "price_to_price_per_cent_ratio": True
+                },
+                color="Price_Category",
+                color_discrete_map=color_map,
+                size="Price per cent",
+                size_max=15,
+                zoom=10,
+                height=600,
+                title="Geographical Distribution of Plots with Price Categories",
+                labels={"Price_Category": "Price per Cent (₹)"}
+            )
+            fig_plot_map.update_layout(
+                mapbox_style="open-street-map",
+                margin={"r":0,"t":50,"l":0,"b":0},
+                legend_title_text='Price per Cent (₹)'
+            )
+            
+            # Add captions and explanations
+            st.plotly_chart(fig_plot_map, use_container_width=True)
+            st.caption("**Note:** Each plot is color-coded based on its Price per Cent. The size of the marker represents the Price per Cent value.")
+        except ValueError as e:
+            st.error(f"Error in creating Price Categories: {e}")
     else:
         st.warning("No data available for the selected filters.")
     
