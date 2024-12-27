@@ -550,11 +550,12 @@ elif dashboard == "Plot Data Dashboard":
             },
             color="Price_Category",
             color_discrete_map=color_map,
-            size="Price_per_cent",
+            size="Price per cent",
             size_max=15,
             zoom=10,
             height=600,
-            title="Geographical Distribution of Plots with Price Categories"
+            title="Geographical Distribution of Plots with Price Categories",
+            labels={"Price_Category": "Price per Cent (₹)"}
         )
         fig_plot_map.update_layout(
             mapbox_style="open-street-map",
