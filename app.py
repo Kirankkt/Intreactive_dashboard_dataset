@@ -68,7 +68,7 @@ if dashboard == "Property Data Dashboard":
     # ---------------------------
     # Load Property Dataset
     # ---------------------------
-    property_file_path = 'Updated_Cleaned_Dataset (1).csv'  # Replace with your actual Property Data CSV file name
+    property_file_path = 'Property_Dataset.csv'  # Replace with your actual Property Data CSV file name
     property_data = load_property_data(property_file_path)
     
     # ---------------------------
@@ -190,10 +190,12 @@ if dashboard == "Property Data Dashboard":
     # Key Performance Indicators (KPIs) for Property Dashboard
     # ---------------------------
     st.header("🚀 Key Performance Indicators")
-    prop_kpi1, prop_kpi2, prop_kpi3, prop_kpi4, prop_kpi5 = st.columns(5)
+    prop_kpi1, prop_kpi2, prop_kpi3 = st.columns(3)
     prop_kpi1.metric("Average Price (₹)", f"₹{filtered_prop_data['Plot__Price'].mean():,.2f}")
     prop_kpi2.metric("Median Plot Area (Cents)", f"{filtered_prop_data['Plot__Area_Cents'].median():,.2f} cents")
     prop_kpi3.metric("Number of Listings", len(filtered_prop_data))
+    
+    prop_kpi4, prop_kpi5 = st.columns(2)
     prop_kpi4.metric("Average Price per Cent (₹)", f"₹{filtered_prop_data['Price_per_cent'].mean():,.2f}")
     prop_kpi5.metric("Average Build Area (sqft)", f"{filtered_prop_data['Build__Area'].mean():,.2f} sqft")
     
@@ -318,24 +320,28 @@ if dashboard == "Property Data Dashboard":
     # Listings Data Table for Property Dashboard
     # ---------------------------
     st.header("📋 Listings Data Table")
-    st.subheader("View Listings for Selected Location(s)")
     
-    # Convert Plot__url to clickable links
-    prop_filtered_data_display = filtered_prop_data.copy()
-    prop_filtered_data_display['Plot__url'] = prop_filtered_data_display['Plot__url'].apply(make_clickable)
-    
-    # Select columns to display
-    prop_display_columns = [
-        'Standardized_Location_Name', 'Plot__Price', 'Plot__Beds', 'Build__Area',
-        'Plot__Area_Cents', 'Price_per_sqft', 'Price_per_cent', 'Build_to_Plot_Ratio',
-        'Total_Area', 'Plot__DESC', 'Plot__url'
-    ]
-    
-    # Display as HTML table for clickable links
-    st.markdown(
-        prop_filtered_data_display[prop_display_columns].to_html(escape=False, index=False),
-        unsafe_allow_html=True
-    )
+    if selected_prop_locations:
+        st.subheader("View Listings for Selected Location(s)")
+        
+        # Convert Plot__url to clickable links
+        prop_filtered_data_display = filtered_prop_data.copy()
+        prop_filtered_data_display['Plot__url'] = prop_filtered_data_display['Plot__url'].apply(make_clickable)
+        
+        # Select columns to display
+        prop_display_columns = [
+            'Standardized_Location_Name', 'Plot__Price', 'Plot__Beds', 'Build__Area',
+            'Plot__Area_Cents', 'Price_per_sqft', 'Price_per_cent', 'Build_to_Plot_Ratio',
+            'Total_Area', 'Plot__DESC', 'Plot__url'
+        ]
+        
+        # Display as HTML table for clickable links
+        st.markdown(
+            prop_filtered_data_display[prop_display_columns].to_html(escape=False, index=False),
+            unsafe_allow_html=True
+        )
+    else:
+        st.info("Please select at least one location to view the listings.")
     
     # ---------------------------
     # Export Option for Property Dashboard
@@ -364,7 +370,7 @@ elif dashboard == "Plot Data Dashboard":
     # ---------------------------
     # Load Plot Dataset
     # ---------------------------
-    plot_file_path = 'standardized_locations_dataset.csv'  # Replace with your actual Plot Data CSV file name
+    plot_file_path = 'Plot_Dataset.csv'  # Replace with your actual Plot Data CSV file name
     plot_data = load_plot_data(plot_file_path)
     
     # ---------------------------
@@ -515,10 +521,12 @@ elif dashboard == "Plot Data Dashboard":
     # Key Performance Indicators (KPIs) for Plot Dashboard
     # ---------------------------
     st.header("🚀 Key Performance Indicators")
-    plot_kpi1, plot_kpi2, plot_kpi3, plot_kpi4, plot_kpi5 = st.columns(5)
+    plot_kpi1, plot_kpi2, plot_kpi3 = st.columns(3)
     plot_kpi1.metric("Average Price (₹)", f"₹{filtered_plot_data['Price'].mean():,.2f}")
     plot_kpi2.metric("Median Plot Area (Cents)", f"{filtered_plot_data['Area'].median():,.2f} cents")
     plot_kpi3.metric("Number of Listings", len(filtered_plot_data))
+    
+    plot_kpi4, plot_kpi5 = st.columns(2)
     plot_kpi4.metric("Average Price per Cent (₹)", f"₹{filtered_plot_data['Price per cent'].mean():,.2f}")
     plot_kpi5.metric("Average Build Area (sqft)", f"{filtered_plot_data['price_to_price_per_cent_ratio'].mean():,.2f} sqft")
     
@@ -545,7 +553,7 @@ elif dashboard == "Plot Data Dashboard":
             },
             color="Cluster",
             size="Price",
-            color_continuous_scale=px.colors.qualitative.Safe,
+            color_discrete_sequence=px.colors.qualitative.Safe,
             size_max=15,
             zoom=10,
             height=600,
@@ -662,23 +670,27 @@ elif dashboard == "Plot Data Dashboard":
     # Listings Data Table for Plot Dashboard
     # ---------------------------
     st.header("📋 Listings Data Table")
-    st.subheader("View Listings for Selected Location(s)")
     
-    # Convert Url to clickable links
-    plot_filtered_data_display = filtered_plot_data.copy()
-    plot_filtered_data_display['Url'] = plot_filtered_data_display['Url'].apply(make_clickable)
-    
-    # Select columns to display
-    plot_display_columns = [
-        'Location', 'Price', 'Area', 'Price per cent', 'density',
-        'price_to_price_per_cent_ratio', 'beach_proximity', 'lake_proximity', 'Url'
-    ]
-    
-    # Display as HTML table for clickable links
-    st.markdown(
-        plot_filtered_data_display[plot_display_columns].to_html(escape=False, index=False),
-        unsafe_allow_html=True
-    )
+    if selected_plot_locations:
+        st.subheader("View Listings for Selected Location(s)")
+        
+        # Convert Url to clickable links
+        plot_filtered_data_display = filtered_plot_data.copy()
+        plot_filtered_data_display['Url'] = plot_filtered_data_display['Url'].apply(make_clickable)
+        
+        # Select columns to display
+        plot_display_columns = [
+            'Location', 'Price', 'Area', 'Price per cent', 'density',
+            'price_to_price_per_cent_ratio', 'beach_proximity', 'lake_proximity', 'Url'
+        ]
+        
+        # Display as HTML table for clickable links
+        st.markdown(
+            plot_filtered_data_display[plot_display_columns].to_html(escape=False, index=False),
+            unsafe_allow_html=True
+        )
+    else:
+        st.info("Please select at least one location to view the listings.")
     
     # ---------------------------
     # Export Option for Plot Dashboard
