@@ -185,20 +185,30 @@ if dashboard == "Property Data Dashboard":
     prop_kpi3.metric("Number of Listings", len(filtered_prop_data))
     
     prop_kpi4, prop_kpi5 = st.columns(2)
-    prop_kpi4.metric("Average Price per Cent (₹)", f"₹{filtered_prop_data['Price_per_cent'].mean():,.2f}")
+    
+    # Updated Average Price per Cent Calculation
+    total_price_prop = filtered_prop_data['Plot__Price'].sum()
+    total_area_prop = filtered_prop_data['Plot__Area_Cents'].sum()
+    average_price_per_cent_prop = total_price_prop / total_area_prop if total_area_prop != 0 else 0
+    prop_kpi4.metric("Average Price per Cent (₹)", f"₹{average_price_per_cent_prop:,.2f}")
+    
     prop_kpi5.metric("Average Build Area (sqft)", f"{filtered_prop_data['Build__Area'].mean():,.2f} sqft")
     
     # ---------------------------
     # Overview of Major Locations for Property Dashboard
     # ---------------------------
     st.header("📊 Overview of Major Locations")
+    # Updated Average_Price_per_Cent calculation
     prop_location_summary = filtered_prop_data.groupby('Standardized_Location_Name').agg(
         Average_Price=('Plot__Price', 'mean'),
-        Average_Price_per_Cent=('Price_per_cent', 'mean'),
+        Sum_Price=('Plot__Price', 'sum'),
+        Sum_Area=('Plot__Area_Cents', 'sum'),
         Total_Listings=('Plot__Price', 'count'),
         Average_Build_Area=('Build__Area', 'mean'),
         Average_Plot_Area_Cents=('Plot__Area_Cents', 'mean')
     ).reset_index()
+    
+    prop_location_summary['Average_Price_per_Cent'] = prop_location_summary['Sum_Price'] / prop_location_summary['Sum_Area']
     
     prop_summary_chart = px.bar(
         prop_location_summary,
@@ -516,8 +526,15 @@ elif dashboard == "Plot Data Dashboard":
     plot_kpi3.metric("Number of Listings", len(filtered_plot_data))
     
     plot_kpi4, plot_kpi5 = st.columns(2)
-    plot_kpi4.metric("Average Price per Cent (₹)", f"₹{filtered_plot_data['Price per cent'].mean():,.2f}")
-    #plot_kpi5.metric("Average Build Area (sqft)", f"{filtered_plot_data['price_to_price_per_cent_ratio'].mean():,.2f} sqft")
+    
+    # Updated Average Price per Cent Calculation
+    total_price_plot = filtered_plot_data['Price'].sum()
+    total_area_plot = filtered_plot_data['Area'].sum()
+    average_price_per_cent_plot = total_price_plot / total_area_plot if total_area_plot != 0 else 0
+    plot_kpi4.metric("Average Price per Cent (₹)", f"₹{average_price_per_cent_plot:,.2f}")
+    
+    # Uncomment and update if needed
+    # plot_kpi5.metric("Average Build Area (sqft)", f"{filtered_plot_data['price_to_price_per_cent_ratio'].mean():,.2f} sqft")
     
     # ---------------------------
     # Interactive Map for Plot Dashboard with Price-Based Color Coding
@@ -647,11 +664,15 @@ elif dashboard == "Plot Data Dashboard":
     # Determine Top and Bottom Locations based on Average Price
     plot_location_summary = filtered_plot_data.groupby('Location').agg(
         Average_Price=('Price', 'mean'),
-        Average_Price_per_Cent=('Price per cent', 'mean'),
+        Sum_Price=('Price', 'sum'),
+        Sum_Area=('Area', 'sum'),
         Total_Plots=('Price', 'count'),
         Average_Area=('Area', 'mean'),
         Median_Area=('Area', 'median')
     ).reset_index()
+    
+    # Calculate Average_Price_per_Cent as Sum_Price / Sum_Area
+    plot_location_summary['Average_Price_per_Cent'] = plot_location_summary['Sum_Price'] / plot_location_summary['Sum_Area']
     
     top_plot_regions = plot_location_summary.sort_values(by='Average_Price', ascending=False).head(5)
     bottom_plot_regions = plot_location_summary.sort_values(by='Average_Price', ascending=True).head(5)
