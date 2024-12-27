@@ -517,7 +517,7 @@ elif dashboard == "Plot Data Dashboard":
     
     plot_kpi4, plot_kpi5 = st.columns(2)
     plot_kpi4.metric("Average Price per Cent (₹)", f"₹{filtered_plot_data['Price per cent'].mean():,.2f}")
-    plot_kpi5.metric("Average Build Area (sqft)", f"{filtered_plot_data['price_to_price_per_cent_ratio'].mean():,.2f} sqft")
+    #plot_kpi5.metric("Average Build Area (sqft)", f"{filtered_plot_data['price_to_price_per_cent_ratio'].mean():,.2f} sqft")
     
     # ---------------------------
     # Interactive Map for Plot Dashboard with Price-Based Color Coding
